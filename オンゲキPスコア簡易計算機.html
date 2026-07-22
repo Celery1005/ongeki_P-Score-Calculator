@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オンゲキ Pスコア計算ツール</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --bg: #f5f7fa;
+            --surface: #ffffff;
+            --text: #333333;
+            --border: #e1e4e8;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 16px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            color: var(--primary);
+        }
+        .input-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .result-box {
+            background: #e8f4fd;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .plus { color: #27ae60; font-weight: bold; }
+        .minus { color: #e74c3c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Pスコア計算ツール</h1>
+
+    <!-- 楽曲選択（疑似的なデータベース） -->
+    <div class="input-group">
+        <label for="songSelect">楽曲から理論値を自動入力 (任意)</label>
+        <select id="songSelect" onchange="autoFillTheoretical()">
+            <option value="">手動で入力する</option>
+            <option value="4000">Titania (MASTER) - 4000</option>
+            <option value="3500">Apollo (MASTER) - 3500</option>
+            <option value="3200">LAMIA (MASTER) - 3200</option>
+            <!-- ここに曲データを追加していくことで手間を省けます -->
+        </select>
+    </div>
+
+    <!-- 1. 理論値入力 -->
+    <div class="input-group">
+        <label for="theoretical">1. Pスコア理論値</label>
+        <input type="number" id="theoretical" placeholder="例: 4000" oninput="calculate()">
+    </div>
+
+    <!-- 2. 自身のPスコア入力 -->
+    <div class="input-group">
+        <label for="myScore">2. 自身のPスコア</label>
+        <input type="number" id="myScore" placeholder="例: 3950" oninput="calculate()">
+    </div>
+
+    <!-- 3. MAX-n の表示 -->
+    <div class="result-box" id="maxMinusDisplay">
+        MAX - 0
+    </div>
+
+    <!-- 4〜9. 各ボーダーと差分の表示 -->
+    <table>
+        <thead>
+            <tr>
+                <th>ランク</th>
+                <th>ボーダー数値</th>
+                <th>ボーダーまで</th>
+            </tr>
+        </thead>
+        <tbody id="resultTableBody">
+            <!-- JavaScriptでここに結果が挿入されます -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // 定数: ランクと割合の定義
+    const RANKS = [
+        { name: "虹☆", rate: 0.99, color: "linear-gradient(to right, #ff7e5f, #feb47b)" },
+        { name: "☆5", rate: 0.98 },
+        { name: "☆4", rate: 0.97 },
+        { name: "☆3", rate: 0.96 },
+        { name: "☆2", rate: 0.95 },
+        { name: "☆1", rate: 0.94 }
+    ];
+
+    // 楽曲選択時に理論値フォームに数値を自動入力する関数
+    function autoFillTheoretical() {
+        const select = document.getElementById('songSelect');
+        const theoreticalInput = document.getElementById('theoretical');
+        if (select.value) {
+            theoreticalInput.value = select.value;
+            calculate(); // 自動計算
+        }
+    }
+
+    // 入力があるたびに計算を行う関数
+    function calculate() {
+        const theoretical = parseInt(document.getElementById('theoretical').value, 10);
+        const myScore = parseInt(document.getElementById('myScore').value, 10);
+        const tbody = document.getElementById('resultTableBody');
+        const maxMinusDisplay = document.getElementById('maxMinusDisplay');
+
+        // テーブルを初期化
+        tbody.innerHTML = "";
+
+        // 値が未入力または不正な場合は計算をストップ
+        if (isNaN(theoretical)) {
+            maxMinusDisplay.innerText = "MAX - ?";
+            return;
+        }
+
+        // 3. MAX-n の計算
+        if (!isNaN(myScore)) {
+            const maxMinus = theoretical - myScore;
+            // MAX割れ（マイナス）の場合はそのまま表示、それ以外は MAX - n
+            maxMinusDisplay.innerText = maxMinus >= 0 ? `MAX - ${maxMinus}` : `理論値を超えています`;
+        } else {
+            maxMinusDisplay.innerText = "自身のスコアを入力してください";
+        }
+
+        // 4〜9. 各ボーダーの計算と差分表示
+        RANKS.forEach(rank => {
+            // ボーダー計算（小数点以下切り上げ）
+            const border = Math.ceil(theoretical * rank.rate);
+            
+            let diffHtml = "-";
+            if (!isNaN(myScore)) {
+                const diff = myScore - border;
+                if (diff >= 0) {
+                    diffHtml = `<span class="plus">+${diff}</span>`;
+                } else {
+                    diffHtml = `<span class="minus">${diff}</span>`;
+                }
+            }
+
+            // テーブルに行を追加
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight: bold;">${rank.name}</td>
+                <td>${border}</td>
+                <td>${diffHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 初回読み込み時にも実行しておく
+    calculate();
+</script>
+</body>
+</html>
